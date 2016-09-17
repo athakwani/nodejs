@@ -1,0 +1,47 @@
+{
+  ports: [
+    "8080:8080"
+  ],
+  dependencies:
+  [
+    {
+      name: "linux-packages",
+      cmd:
+      '''
+	apt-get install -y curl
+        curl -sL https://deb.nodesource.com/setup_6.x | bash 
+        apt-get install -y nodejs
+      '''
+    },
+    {
+      name: "nodejs-packages",
+      cmd:
+      '''
+        npm install -g node-inspector n
+        n 6.3.1
+        cp myproject.conf /etc/init/
+      '''
+    }
+  ],
+  commands: {
+    nodejs-debug: [{
+        server:
+        '''
+            # Start debugger in background detached from terminal
+            service myproject start
+        '''
+      },{
+        client:
+        '''
+          echo "Waiting for debugger to start ....."
+          while [ 1 ]; do
+            wget -q --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 0 --continue $SERVER_IP:8080 >/dev/null 2>&1
+            if [ $? = 0 ]; then break; fi;
+            sleep 5s;
+          done;
+          echo "Debugger is started ....."
+          open https://$SERVER_IP:8080/
+        '''
+     }]
+  }
+}
