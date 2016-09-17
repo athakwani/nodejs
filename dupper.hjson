@@ -27,14 +27,18 @@
         server:
         '''
             # Start debugger in background detached from terminal
-            start-stop-daemon -b --start --quiet --oknodo --pidfile /var/run/myproject.pid --exec /usr/local/bin/node -- /usr/bin/node-debug --web-port=8080 --web-host=0.0.0.0 /root/nodejs/myproject.js
+            start-stop-daemon -b --start --quiet --oknodo \
+            --pidfile /var/run/myproject.pid --exec /usr/local/bin/node \
+            -- /usr/bin/node-debug --web-port=8080 --web-host=0.0.0.0 \
+            /root/nodejs/myproject.js
         '''
       },{
         client:
         '''
           echo "Waiting for debugger to start ....."
           while [ 1 ]; do
-            wget -q --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 0 --continue $SERVER_IP:8080 >/dev/null 2>&1
+            wget -q --retry-connrefused --waitretry=1 --read-timeout=20 \
+            --timeout=15 -t 0 --continue $SERVER_IP:8080 >/dev/null 2>&1
             if [ $? = 0 ]; then break; fi;
             sleep 5s;
           done;
