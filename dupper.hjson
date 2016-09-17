@@ -28,7 +28,7 @@
         server:
         '''
             # Start debugger in background detached from terminal
-            service myproject start
+            start-stop-daemon -b --start --quiet --oknodo --pidfile /var/run/myproject.pid --exec /usr/local/bin/node -- /usr/bin/node-debug --web-port=8080 --web-host=0.0.0.0 /root/nodejs/myproject.js
         '''
       },{
         client:
