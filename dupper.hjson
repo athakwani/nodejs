@@ -45,6 +45,23 @@
           echo "Debugger is started ....."
           open http://$SERVER_IP:8080/
         '''
-     }]
-  }
+     }],
+    debug2: [{
+        server:
+        '''
+            # Start debugger in background detached from terminal
+            start-stop-daemon -b --start --quiet --oknodo \
+            --pidfile /var/run/myproject.pid --exec /usr/local/bin/node \
+            -- /usr/bin/node-debug --web-port=8080 --web-host=0.0.0.0 \
+            /root/nodejs/myproject.js
+            exit_code=$?
+            _export exit_code
+        '''
+      },{
+        client:
+        '''
+          [ $exit_code -eq 0 ] && open http://$SERVER_IP:8080/
+        '''
+     }],
+   }
 }
