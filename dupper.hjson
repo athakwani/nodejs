@@ -23,7 +23,7 @@
     }
   ],
   commands: {
-    nodejs-debug: [{
+    debug: [{
         server:
         '''
             # Start debugger in background detached from terminal
