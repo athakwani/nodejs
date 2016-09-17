@@ -19,7 +19,7 @@
       '''
         npm install -g node-inspector n
         n 6.3.1
-        cp myproject.conf /etc/init/
+        cp $REPO_ROOT/myproject.conf /etc/init/
       '''
     }
   ],
