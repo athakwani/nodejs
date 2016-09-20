@@ -43,7 +43,11 @@
             sleep 5s;
           done;
           echo "Debugger is started ....."
-          open http://$SERVER_IP:8080/
+
+          os="$(uname -s)"
+          if [[ $os == "Darwin" ]]; then
+            open http://$SERVER_IP:8080/
+          fi        
         '''
      }],
     debug2: [{
@@ -60,7 +64,10 @@
       },{
         client:
         '''
-          [ $exit_code -eq 0 ] && open http://$SERVER_IP:8080/
+          os="$(uname -s)"
+          if [[ $os == "Darwin" ]]; then
+            [ $exit_code -eq 0 ] && open http://$SERVER_IP:8080/
+          fi        
         '''
      }],
    }
