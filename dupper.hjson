@@ -7,7 +7,8 @@
   ],  
   env:
   [
-    "NODE_ENV=development"
+    "NODE_ENV=development",
+    "PORT=3000"
   ],
   dependencies: 
   [
@@ -54,6 +55,13 @@
     }     
   ],
   commands: {
+    build: [{
+      server:
+      '''
+         set -e
+         npm build
+      '''
+    }],    
     start: [{
       server:
       '''
@@ -133,6 +141,108 @@
               [ $exit_code -eq 0 ] && open http://$SERVER_IP:8000/  
           fi        
       '''
-    }]    
+    }],    
+    heroku-deploy: [{
+        server:
+        '''
+            cd $REPO_ROOT
+            ENVFILE=$REPO_ROOT/.env.heroku
+            
+            EMAIL=$(git config --global user.email)
+            if [[ -z $EMAIL ]]
+            then
+                printf "Enter Email for git commit: "
+                read EMAIL
+                [ -z $EMAIL ] && echo "Invalid email address" && exit 1
+                git config --global user.email $EMAIL
+            fi
+
+            NAME=$(git config --global user.name)
+            if [[ -z $NAME ]]
+            then
+                printf "Enter Name for git commit: "
+                read NAME
+                [ -z $EMAIL ] && echo "Invalid Name" && exit 1
+                git config --global user.name $NAME
+            fi
+
+            [ -f $ENVFILE ] && APP_NAME=$(source $ENVFILE; echo $APP_NAME)
+            
+            if [[ -z $APP_NAME ]]
+            then
+                # Generate APP Name and APP URL from user.name
+                APP_NAME=$(echo $NAME | awk '{print $1;}')
+                APP_NAME="${APP_NAME,,}-${RANDOM}${RANDOM}"
+                echo "APP_NAME=$APP_NAME" > $ENVFILE
+            fi
+
+            APP_URL=$(source $ENVFILE; echo $APP_URL)
+            if [[ -z $APP_URL ]]
+            then
+                APP_URL=https://${APP_NAME}.herokuapp.com/
+                echo "APP_URL=$APP_URL" >> $ENVFILE
+            fi
+
+            REMOTE_APP_NAME=$(heroku domains  --app $APP_NAME --json 2>&1 | jq -r .[0].app.name 2>&1)
+            # Get config from user if .env file doesnt exists
+            if [[ $REMOTE_APP_NAME != $APP_NAME ]]
+            then
+                # Create Heroku app and add MONGODB URI addon
+                heroku create $APP_NAME
+                [ $? -ne 0 ] && exit 1
+            fi
+
+            MONGODB_URI=$(heroku config:get MONGODB_URI --app $APP_NAME)
+            if [[ -z $MONGODB_URI ]]
+            then
+                heroku addons:create mongolab --app $APP_NAME
+                [ $? -ne 0 ] && exit 1
+                MONGODB_URI=$(heroku config:get MONGODB_URI --app $APP_NAME)
+                echo "MONGO_URI=$MONGODB_URI" >> $ENVFILE
+            fi
+
+            HEROKU_GITURL=$(heroku apps:info $APP_NAME --json | jq -r .app.git_url)
+            [ $? -ne 0 ] && exit 1
+
+            if [[ $GITURL != $HEROKU_GITURL ]]
+            then
+                git remote rm heroku
+                git remote add heroku $HEROKU_GITURL
+            fi
+            
+            git push heroku master
+            URL=$(heroku domains --app $APP_NAME --json | jq .[0].hostname)
+            _export URL
+        '''
+      },{
+        client:
+        '''
+          # Open APP URL on Mac
+          os="$(uname -s)"
+          if [[ $os == "Darwin" ]]; then
+            [[ ${URL:-} != "" ]] && open https://$URL
+          else
+            echo "Heroku app deployed at https://$URL"
+          fi        
+        '''
+    }],    
+    heroku-delete: [{
+        server:
+        '''
+            cd $REPO_ROOT
+            ENVFILE=$REPO_ROOT/.env.heroku
+
+            [ -f $ENVFILE ] && APP_NAME=$(source $ENVFILE; echo $APP_NAME)
+            
+            if [[ -n $APP_NAME ]]
+            then
+                git remote remove heroku
+                heroku apps:destroy --app $APP_NAME --confirm $APP_NAME
+                rm $ENVFILE
+            else 
+                echo "App not Found"
+            fi            
+        '''
+    }],   
   }
 }
