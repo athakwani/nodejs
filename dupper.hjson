@@ -2,7 +2,7 @@
   ports: 
   [
     "8080:8080",    // node-inspector
-    "8000:8000",     // c9
+    "8000:8000",    // c9
     "3000:3000"     // default expressjs port
   ],  
   env:
