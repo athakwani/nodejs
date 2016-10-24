@@ -2,7 +2,8 @@
   ports: 
   [
     "8080:8080",    // node-inspector
-    "8000:8000"     // c9
+    "8000:8000",     // c9
+    "3000:3000"     // default expressjs port
   ],  
   env:
   [
@@ -16,7 +17,7 @@
       '''
         apt-get -y install curl wget libfontconfig
         curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
-        apt-get -y install nodejs daemon
+        apt-get -y install nodejs daemon mongodb
       '''
     },
     {
@@ -34,7 +35,7 @@
       cmd:
       '''
         cd $REPO_ROOT
-        if [[] -f bower.json ]]; then 
+        if [[ -f bower.json ]]; then 
             bower install --allow-root
         fi
       ''',
@@ -56,6 +57,13 @@
     start: [{
       server:
       '''
+        # Check Mogodb service and start if not running
+         service mongodb status > /dev/null 2>&1
+         if [[ $? -ne 0 ]]
+         then
+            service mongodb start
+         fi
+
          set -e
          npm start
       '''
@@ -63,6 +71,13 @@
     test: [{
       server:
       '''
+         # Check Mogodb service and start if not running
+         service mongodb status > /dev/null 2>&1
+         if [[ $? -ne 0 ]]
+         then
+            service mongodb start
+         fi
+
          set -e
          npm test
       '''
