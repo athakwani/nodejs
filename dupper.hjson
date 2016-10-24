@@ -1,64 +1,128 @@
 {
-  ports: [
-    "8080:8080"
+  ports: 
+  [
+    "8080:8080",    // node-inspector
+    "8000:8000"     // c9
+  ],  
+  env:
+  [
+    "NODE_ENV=development"
   ],
-  dependencies:
+  dependencies: 
   [
     {
-      name: "linux-packages",
+      name: "linux-dependencies",
       cmd:
       '''
-	apt-get install -y curl
-        curl -sL https://deb.nodesource.com/setup_6.x | bash 
-        apt-get install -y nodejs
+        apt-get -y install curl wget libfontconfig
+        curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
+        apt-get -y install nodejs daemon
       '''
     },
     {
-      name: "nodejs-packages",
+      name: "nodejs-dependencies",
       cmd:
       '''
-        npm install -g node-inspector n
-        n 6.3.1
+        npm install -g bower gulp node-inspector
+        cd $REPO_ROOT
+        npm install
+      ''',
+      watch: "package.json"
+    },
+    {
+      name: "bower-dependencies",
+      cmd:
       '''
-    }
+        cd $REPO_ROOT
+        bower install --allow-root
+      ''',
+      watch: "bower.json"
+    },
+    {
+      name: "cloud-9-sdk-dependencies",
+      cmd:
+      '''    
+        apt-get install -y build-essential g++ curl libssl-dev apache2-utils libxml2-dev sshfs python2.7 python2.7-dev
+        git clone https://github.com/c9/core.git cloud9
+        cd cloud9
+        scripts/install-sdk.sh
+        sed -i -e 's_127.0.0.1_0.0.0.0_g' configs/standalone.js 
+      '''
+    }     
   ],
   commands: {
+    start: [{
+      server:
+      '''
+         # npm start as Daemon
+         PORT=3000 daemon --name="start" --output=start.out -F /var/run/start.pid -D $REPO_ROOT -X /usr/bin/npm -- start        
+         # Report status
+         _exit_code=$?   
+
+         echo "npm start ..... [ STARTING ]"
+         if [[ $_exit_code -eq 0 ]]
+         then
+             echo -e "node.js project ..... [ STARTED ]"
+         else
+             echo -e "node.js project ..... [ TIMEOUT ]"
+         fi
+
+         # Pass Status to client
+         _export _exit_code
+      '''
+    }],
+    stop: [{
+      server:
+      '''
+          # Get group ID of Gulp daemon process
+          pgid=$(ps --no-headers -o pgid $(cat /var/run/start.pid))
+          pgid=$(echo $pgid | tr -d '[[:space:]]')
+
+          # Kill all group processes
+          pkill -1 -g $pgid
+
+          echo "node.js project ..... [ STOPPING ]"
+
+          # Check for termination and report status
+          timeout 5 bash -c -- "while true; do [ -f /var/run/start.pid ]; \
+          if [ $? -eq 0 ]; then break; fi; sleep 2s; done"
+          _exit_code=$?
+
+          if [[ $_exit_code -eq 0 ]]
+          then
+              echo -e "node.js project ..... [ STOPPED ]"
+          else
+              echo -e "node.js project ..... [ FAILED ]"
+          fi
+      '''
+    }],    
+    logs: [{
+      server:
+      '''
+          tail -n 1000 $REPO_ROOT/start.out
+      '''
+    }],    
     debug: [{
         server:
         '''
             # Start debugger in background detached from terminal
-            start-stop-daemon -b --start --quiet --oknodo \
-            --pidfile /var/run/myproject.pid --exec /usr/local/bin/node \
-            -- /usr/bin/node-debug --web-port=8080 --web-host=0.0.0.0 \
-            /root/nodejs/myproject.js
-        '''
-      },{
-        client:
-        '''
-          echo "Waiting for debugger to start ....."
-          while [ 1 ]; do
-            wget -q --retry-connrefused --waitretry=1 --read-timeout=20 \
-            --timeout=15 -t 0 --continue $SERVER_IP:8080 >/dev/null 2>&1
-            if [ $? = 0 ]; then break; fi;
-            sleep 5s;
-          done;
-          echo "Debugger is started ....."
-
-          os="$(uname -s)"
-          if [[ $os == "Darwin" ]]; then
-            open http://$SERVER_IP:8080/
-          fi        
-        '''
-     }],
-    debug2: [{
-        server:
-        '''
-            # Start debugger in background detached from terminal
-            start-stop-daemon -b --start --quiet --oknodo \
-            --pidfile /var/run/myproject.pid --exec /usr/local/bin/node \
-            -- /usr/bin/node-debug --web-port=8080 --web-host=0.0.0.0 \
-            /root/nodejs/myproject.js
+            [ -f /var/run/start.pid ]
             exit_code=$?
+            _export exit_code
+    
+            if [[ $exit_code -ne 0 ]]
+            then
+                echo "Node.js peoject not running, start using below command:"
+                echo "Usage:"
+                echo "    dupper exec $REPO_NAME start"
+                exit 1
+            fi
+            
+            # Start debugger in background detached from terminal
+            daemon --name="node-inspector" --output=node-inspector.out -F /var/run/node-inspector.pid -D $REPO_ROOT -X /usr/bin/node \
+            /usr/bin/node-inspector -- --web-port=8080 --web-host=0.0.0.0
+            
+            exit_code="$?"
             _export exit_code
         '''
       },{
@@ -69,6 +133,26 @@
             [ $exit_code -eq 0 ] && open http://$SERVER_IP:8080/
           fi        
         '''
-     }],
-   }
+    }],
+    c9: [{
+      server:
+      '''
+          # Start debugger in background detached from terminal
+          start-stop-daemon -b --start --quiet --oknodo \
+          --pidfile /var/run/c9.pid --exec $HOME/.c9/node/bin/node \
+          -- /root/cloud9/server.js --listen 0.0.0.0 --port 8000 -w $REPO_ROOT
+          exit_code=$?
+          _export exit_code
+      '''
+    },{
+      client:
+      '''
+         # Open browser on Mac if C9 started successfully
+          os="$(uname -s)"
+          if [[ $os == "Darwin" ]]; then
+              [ $exit_code -eq 0 ] && open http://$SERVER_IP:8000/  
+          fi        
+      '''
+    }]    
+  }
 }
