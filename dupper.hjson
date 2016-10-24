@@ -16,7 +16,7 @@
       name: "linux-dependencies",
       cmd:
       '''
-        apt-get -y install curl wget libfontconfig
+        apt-get -y install curl wget libfontconfig jq
         curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
         apt-get -y install nodejs daemon mongodb
       '''
