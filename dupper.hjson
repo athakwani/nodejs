@@ -43,6 +43,13 @@
       watch: "bower.json"
     },
     {
+      name: "heroku-cli",
+      cmd:
+      '''
+        wget -O- https://toolbelt.heroku.com/install-ubuntu.sh | sh
+      '''
+    },
+    {
       name: "cloud-9-sdk-dependencies",
       cmd:
       '''    
