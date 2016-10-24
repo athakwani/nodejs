@@ -34,7 +34,9 @@
       cmd:
       '''
         cd $REPO_ROOT
-        [ -f bower.json ] && bower install --allow-root
+        if [[] -f bower.json ]]; then 
+            bower install --allow-root
+        fi
       ''',
       watch: "bower.json"
     },
