@@ -54,52 +54,15 @@
     start: [{
       server:
       '''
-         # npm start as Daemon
-         PORT=3000 daemon --name="start" --output=start.out -F /var/run/start.pid -D $REPO_ROOT -X /usr/bin/npm -- start        
-         # Report status
-         _exit_code=$?   
-
-         echo "npm start ..... [ STARTING ]"
-         if [[ $_exit_code -eq 0 ]]
-         then
-             echo -e "node.js project ..... [ STARTED ]"
-         else
-             echo -e "node.js project ..... [ TIMEOUT ]"
-         fi
-
-         # Pass Status to client
-         _export _exit_code
+         set -e
+         npm start
       '''
     }],
-    stop: [{
+    test: [{
       server:
       '''
-          # Get group ID of Gulp daemon process
-          pgid=$(ps --no-headers -o pgid $(cat /var/run/start.pid))
-          pgid=$(echo $pgid | tr -d '[[:space:]]')
-
-          # Kill all group processes
-          pkill -1 -g $pgid
-
-          echo "node.js project ..... [ STOPPING ]"
-
-          # Check for termination and report status
-          timeout 5 bash -c -- "while true; do [ -f /var/run/start.pid ]; \
-          if [ $? -eq 0 ]; then break; fi; sleep 2s; done"
-          _exit_code=$?
-
-          if [[ $_exit_code -eq 0 ]]
-          then
-              echo -e "node.js project ..... [ STOPPED ]"
-          else
-              echo -e "node.js project ..... [ FAILED ]"
-          fi
-      '''
-    }],    
-    logs: [{
-      server:
-      '''
-          tail -n 1000 $REPO_ROOT/start.out
+         set -e
+         npm test
       '''
     }],    
     debug: [{
